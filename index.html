@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Notícias do Brasil</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Source Sans;
+        }
+        
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        #feed {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: background-image 0.8s ease-in-out, opacity 0.4s ease-in-out;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        
+        .logo {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            width: 150px;
+            z-index: 16;
+            filter: drop-shadow(0 0 6px rgba(0, 0, 0, .8));
+        }
+        
+        .overlay {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, .75);
+            padding: 60px 70px 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            z-index: 10;
+            overflow: hidden;
+            backdrop-filter: blur(2px);
+        }
+        
+        .title-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 12px;
+            background: linear-gradient(90deg, #002f6c, #005cb9);
+            z-index: 11;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, .4);
+        }
+        
+        .title {
+            font-size: 2em;
+            font-weight: bold;
+            text-shadow: 0 0 15px rgba(0, 0, 0, .8);
+            margin-bottom: 15px;
+            padding: 0 20px;
+        }
+        
+        .description {
+            font-size: 1.2em;
+            line-height: 1.6;
+            padding: 0 20px;
+            word-break: break-word;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        @media(max-width:768px) {
+            .title {
+                font-size: 1.5em;
+            }
+            .description {
+                font-size: 1em;
+                padding: 0 12px;
+            }
+            .overlay {
+                padding: 20px;
+            }
+            .logo {
+                width: 100px;
+                top: 15px;
+                right: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="feed">
+        <img class="logo" src="img\unnamed.png" alt="Gazeta do Povo">
+        <div class="overlay">
+            <div class="title-bar"></div>
+            <div class="title" id="title"></div>
+            <div class="description" id="description"></div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            var FEEDS = [
+                "https://www.gazetadopovo.com.br/feed/rss/brasil.xml"
+            ];
+
+            var PROXIES = [
+                function(u) {
+                    return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u);
+                },
+                function(u) {
+                    return "https://api.allorigins.cf/raw?url=" + encodeURIComponent(u);
+                },
+                function(u) {
+                    return "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u);
+                }
+            ];
+
+            var PLACEHOLDER = "https://via.placeholder.com/1920x1080?text=Notícia+sem+imagem";
+
+            var feedEl = document.getElementById("feed");
+            var titleEl = document.getElementById("title");
+            var descEl = document.getElementById("description");
+
+            function cleanText(s) {
+                try {
+                    var t = s.replace(/<[^>]*>/g, "");
+                    var ta = document.createElement("textarea");
+                    ta.innerHTML = t;
+                    return (ta.value || "").trim();
+                } catch (e) {
+                    return (s || "").trim();
+                }
+            }
+
+            function extractImage(item) {
+                try {
+                    var imgTag = item.getElementsByTagName("image")[0];
+                    if (imgTag && imgTag.getElementsByTagName("url")[0]) {
+                        return imgTag.getElementsByTagName("url")[0].textContent;
+                    }
+                    var descTag = item.getElementsByTagName("description")[0];
+                    var desc = descTag ? descTag.textContent : "";
+                    var m = desc.match(/https?:\/\/[^"'<> ]+\.(jpg|jpeg|png|gif)(\?[^ "'<>]*)?/i);
+                    if (m) return m[0];
+                } catch (e) {}
+                return null;
+            }
+
+            function parseFeed(xml) {
+                var doc = new DOMParser().parseFromString(xml, "application/xml");
+                var items = doc.getElementsByTagName("item");
+                var list = [];
+                for (var i = 0; i < items.length; i++) {
+                    var it = items[i];
+                    var titleTag = it.getElementsByTagName("title")[0];
+                    var descTag = it.getElementsByTagName("description")[0];
+                    var title = cleanText(titleTag ? titleTag.textContent : "");
+                    var desc = cleanText(descTag ? descTag.textContent : "");
+                    var img = extractImage(it);
+                    if (img) list.push({
+                        title: title,
+                        description: desc,
+                        image: img
+                    });
+                }
+                return list;
+            }
+
+            function xhrGet(url, cb) {
+                var xhr = new XMLHttpRequest();
+                var done = false;
+                var timer = setTimeout(function() {
+                    if (!done) {
+                        done = true;
+                        cb(new Error("Timeout"));
+                        xhr.abort();
+                    }
+                }, 7000);
+                xhr.open("GET", url, true);
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4 && !done) {
+                        done = true;
+                        clearTimeout(timer);
+                        if (xhr.status >= 200 && xhr.status < 300) cb(null, xhr.responseText);
+                        else cb(new Error("Status " + xhr.status));
+                    }
+                };
+                xhr.onerror = function() {
+                    if (!done) {
+                        done = true;
+                        clearTimeout(timer);
+                        cb(new Error("Erro XHR"));
+                    }
+                };
+                try {
+                    xhr.send();
+                } catch (e) {
+                    cb(e);
+                }
+            }
+
+            function tryFeeds(feedList, proxyList, done) {
+                if (feedList.length === 0) return done(new Error("Nenhum feed disponível"));
+                var feed = feedList.shift();
+                tryProxies(feed, proxyList.slice(), function(err, res) {
+                    if (err) tryFeeds(feedList, proxyList, done);
+                    else done(null, res);
+                });
+            }
+
+            function tryProxies(feedUrl, proxies, done) {
+                if (proxies.length === 0) return done(new Error("Todos proxies falharam"));
+                var proxy = proxies.shift();
+                xhrGet(proxy(feedUrl), function(err, res) {
+                    if (err) tryProxies(feedUrl, proxies, done);
+                    else done(null, res);
+                });
+            }
+
+            function preload(url, cb) {
+                var img = new Image();
+                var done = false;
+                var timer = setTimeout(function() {
+                    if (!done) {
+                        done = true;
+                        cb(false);
+                    }
+                }, 4000);
+                img.onload = function() {
+                    if (!done) {
+                        done = true;
+                        clearTimeout(timer);
+                        cb(true);
+                    }
+                };
+                img.onerror = function() {
+                    if (!done) {
+                        done = true;
+                        clearTimeout(timer);
+                        cb(false);
+                    }
+                };
+                img.src = url + (url.indexOf("?") >= 0 ? "&" : "?") + "cacheBust=" + Date.now();
+            }
+
+            function show(item) {
+                feedEl.style.opacity = "0.6";
+                setTimeout(function() {
+                    feedEl.style.backgroundImage = "url('" + (item.image || PLACEHOLDER) + "')";
+                    titleEl.textContent = item.title || "";
+                    descEl.textContent = item.description || "";
+                    feedEl.style.opacity = "1";
+                }, 200);
+            }
+
+            function showError(msg1, msg2) {
+                titleEl.textContent = msg1;
+                descEl.textContent = msg2;
+                feedEl.style.backgroundImage = "url('" + PLACEHOLDER + "')";
+            }
+
+            // Execução principal
+            tryFeeds(FEEDS.slice(), PROXIES, function(err, xml) {
+                if (err || !xml) {
+                    showError("Erro ao carregar notícias", "Tente novamente mais tarde.");
+                    return;
+                }
+
+                var news = parseFeed(xml);
+                if (!news.length) {
+                    showError("Nenhuma notícia com imagem", "Tente novamente mais tarde.");
+                    return;
+                }
+
+                var item = news[Math.floor(Math.random() * news.length)];
+                preload(item.image, function(ok) {
+                    if (ok) show(item);
+                    else show({
+                        title: item.title,
+                        description: item.description,
+                        image: PLACEHOLDER
+                    });
+                });
+            });
+
+        })();
+    </script>
+</body>
+
+</html>
