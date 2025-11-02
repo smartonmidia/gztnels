@@ -33,6 +33,7 @@
             align-items: flex-end;
             justify-content: center;
         }
+        /* 🪶 Logo */
         
         .logo {
             position: absolute;
@@ -42,20 +43,24 @@
             z-index: 16;
             filter: drop-shadow(0 0 6px rgba(0, 0, 0, .8));
         }
+        /* 🪶 Rodapé aumentado em 0,5 pol (~48px) */
         
         .overlay {
             position: absolute;
             bottom: 0;
             width: 100%;
             background: rgba(0, 0, 0, .75);
-            padding: 60px 70px 50px;
+            padding: 108px 70px 98px;
+            /* antes era 60px 70px 50px → +48px total */
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
             z-index: 10;
             overflow: hidden;
             backdrop-filter: blur(2px);
+            transition: all 0.5s ease;
         }
+        /* Barra superior */
         
         .title-bar {
             position: absolute;
@@ -67,18 +72,22 @@
             z-index: 11;
             box-shadow: 0 -2px 8px rgba(0, 0, 0, .4);
         }
+        /* 🔠 Texto ampliado de forma proporcional */
         
         .title {
-            font-size: 2em;
+            font-size: 2.3em;
+            /* antes 2em */
             font-weight: bold;
             text-shadow: 0 0 15px rgba(0, 0, 0, .8);
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            /* antes 15px */
             padding: 0 20px;
         }
         
         .description {
-            font-size: 1.2em;
-            line-height: 1.6;
+            font-size: 1.35em;
+            /* antes 1.2em */
+            line-height: 1.7;
             padding: 0 20px;
             word-break: break-word;
             display: -webkit-box;
@@ -87,17 +96,19 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+        /* 📱 Responsivo */
         
         @media(max-width:768px) {
             .title {
-                font-size: 1.5em;
+                font-size: 1.8em;
             }
             .description {
-                font-size: 1em;
+                font-size: 1.1em;
                 padding: 0 12px;
             }
             .overlay {
-                padding: 20px;
+                padding: 45px 24px 35px;
+                /* aumento proporcional no mobile */
             }
             .logo {
                 width: 100px;
